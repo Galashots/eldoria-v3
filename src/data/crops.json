@@ -1,0 +1,11 @@
+{
+  "_comment": "Crop economics ported from the original. cost=gold to plant, grow=ms to ripen, sell=gold per crop. The cost/reward/speed tradeoff IS the hidden math.",
+  "order": ["turnip", "carrot", "corn", "pumpkin", "starfruit"],
+  "crops": {
+    "turnip":    { "name": "Turnip",    "cost": 2,  "grow": 8000,  "sell": 3,  "color": "#66aa33", "readyColor": "#88dd44" },
+    "carrot":    { "name": "Carrot",    "cost": 4,  "grow": 15000, "sell": 8,  "color": "#cc7722", "readyColor": "#ff9933" },
+    "corn":      { "name": "Corn",      "cost": 6,  "grow": 20000, "sell": 12, "color": "#e8c840", "readyColor": "#ffe066" },
+    "pumpkin":   { "name": "Pumpkin",   "cost": 8,  "grow": 30000, "sell": 20, "color": "#dd9922", "readyColor": "#ffcc44" },
+    "starfruit": { "name": "Starfruit", "cost": 15, "grow": 45000, "sell": 40, "color": "#cc55cc", "readyColor": "#ee88ee" }
+  }
+}
