@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  buildGroundTileset, buildCropTextures, buildIcons, registerProps,
+  buildGroundTileset, buildCropTextures, buildIcons, registerProps, buildTownTextures,
 } from '../render/textures.js';
 
 // PreloadScene loads the CC0 Ninja Adventure art (vendored in public/assets/ninja),
@@ -39,6 +39,7 @@ export default class PreloadScene extends Phaser.Scene {
     buildCropTextures(this);
     buildIcons(this);
     registerProps(this);
+    buildTownTextures(this);
     this.buildHeroAnims();
     this.scene.start('Title');
   }

@@ -200,6 +200,65 @@ export function registerProps(scene) {
   }
 }
 
+// ── Town props (generated, in the pack's palette) ───────────────────────────
+// The village atlas ships no market stall or quest board, so we generate them —
+// same approach as the tilled soil + crops. Bottom-centre anchored at use sites.
+// A `stocked` variant draws produce on the table (the persistent Market-Day
+// consequence).
+export function buildTownTextures(scene) {
+  const makeStall = (key, stocked) => {
+    const tex = scene.textures.createCanvas(key, 48, 44);
+    const ctx = tex.getContext();
+    ctx.imageSmoothingEnabled = false;
+    // posts
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(3, 6, 3, 36);
+    ctx.fillRect(42, 6, 3, 36);
+    // awning (red/cream stripes)
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = i % 2 ? '#e8d9b0' : '#b8412f';
+      ctx.fillRect(2 + i * 7.5, 4, 8, 10);
+    }
+    ctx.fillStyle = '#8a2e22';
+    ctx.fillRect(2, 13, 44, 2);
+    // table top + apron
+    ctx.fillStyle = '#7a5532';
+    ctx.fillRect(4, 28, 40, 5);
+    ctx.fillStyle = '#5e4026';
+    ctx.fillRect(4, 33, 40, 9);
+    if (stocked) {
+      const goods = ['#d97b2b', '#e8c33a', '#cc4444', '#7ab84a', '#cc66bb'];
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = goods[i];
+        ctx.fillRect(7 + i * 7, 23, 5, 5);
+        ctx.fillStyle = shade(goods[i], -40);
+        ctx.fillRect(7 + i * 7, 27, 5, 1);
+      }
+    }
+    tex.refresh();
+  };
+  makeStall('market_stall', false);
+  makeStall('market_stall_full', true);
+
+  // Quest board: posts + plank board + a pinned parchment with text lines.
+  const board = scene.textures.createCanvas('quest_board', 34, 44);
+  const ctx = board.getContext();
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#5e4026';
+  ctx.fillRect(4, 18, 3, 24);
+  ctx.fillRect(27, 18, 3, 24);
+  ctx.fillStyle = '#7a5532';
+  ctx.fillRect(2, 6, 30, 18);
+  ctx.fillStyle = '#5e4026';
+  ctx.fillRect(2, 6, 30, 2);
+  ctx.fillRect(2, 22, 30, 2);
+  ctx.fillStyle = '#e8dcb5';
+  ctx.fillRect(8, 9, 18, 12);
+  ctx.fillStyle = '#9c8a5a';
+  for (let i = 0; i < 4; i++) ctx.fillRect(10, 11 + i * 2.5, 14, 1);
+  board.refresh();
+}
+
 // ── Small generated UI bits ─────────────────────────────────────────────────
 // A gold coin icon and a simple seed-pouch icon, for the HUD/hotbar.
 export function buildIcons(scene) {

@@ -152,7 +152,7 @@ export default class CharacterScene extends Phaser.Scene {
   }
 
   closeScreen() {
-    this.scene.resume('World');
+    this.scene.resume(this.registry.get('activeScene') || 'World');
     this.scene.stop();
   }
 }

@@ -19,6 +19,8 @@ export default class WorldScene extends Phaser.Scene {
   create() {
     this.profile = this.registry.get('profile') || 'adventurer';
     this.modalOpen = false;
+    this.transitioning = false;
+    this.registry.set('activeScene', 'World');
     this.plantedCrops = new Map();
     this.cropSprites = new Map();
     if (!this.registry.get('selectedSeed')) this.registry.set('selectedSeed', 'turnip');
@@ -41,6 +43,15 @@ export default class WorldScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, this.mapPixelW, this.mapPixelH);
     this.physics.world.setBounds(0, 0, this.mapPixelW, this.mapPixelH);
     this.cameras.main.setRoundPixels(true);
+    this.cameras.main.fadeIn(250, 0, 0, 0);
+
+    // ── Right-edge exit to Town ───────────────────────────────────────────────
+    this.add.text((MAP_W - 1) * TILE, 12 * TILE, 'Town →', {
+      fontFamily: 'Georgia, serif', fontSize: '13px', color: '#ffe9b0', stroke: '#2a1c10', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(50);
+    this.townExit = this.add.zone(this.mapPixelW - 10, this.mapPixelH / 2, 24, this.mapPixelH);
+    this.physics.add.existing(this.townExit, true);
+    this.physics.add.overlap(this.player, this.townExit, () => this.exitToTown());
 
     // ── Input ────────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -70,6 +81,8 @@ export default class WorldScene extends Phaser.Scene {
     this.input.on('pointerup', () => { if (!this.pendingFarmTile) this.touchTarget = null; });
 
     this.spawnAmbiance();
+    // Keep the HUD quest tracker correct when arriving back from town.
+    this.scene.get('UI')?.refresh?.();
   }
 
   update() {
@@ -116,6 +129,14 @@ export default class WorldScene extends Phaser.Scene {
     this.updateCropGrowth();
   }
 
+  // ── Transition to town ───────────────────────────────────────────────────────
+  exitToTown() {
+    if (this.transitioning) return;
+    this.transitioning = true;
+    this.cameras.main.fadeOut(200, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Town'));
+  }
+
   // ── Farm build ──────────────────────────────────────────────────────────────
   buildFarm() {
     const G = T.GRASS;
@@ -149,7 +170,11 @@ export default class WorldScene extends Phaser.Scene {
 
     this.mapPixelW = MAP_W * TILE;
     this.mapPixelH = MAP_H * TILE;
-    this.spawnPoint = { x: 7 * TILE, y: 13 * TILE };
+    // Returning from town drops the player at the right edge; a fresh entry uses the
+    // default spot near the farmhouse.
+    const ws = this.registry.get('worldSpawn');
+    this.spawnPoint = ws || { x: 7 * TILE, y: 13 * TILE };
+    if (ws) this.registry.set('worldSpawn', null);
 
     this.placeProps();
   }

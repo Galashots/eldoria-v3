@@ -1,0 +1,24 @@
+{
+  "_comment": "Authored to docs/design/quest-template.md. Money/change math is the MECHANIC (assemble coins to a target), never a modal quiz. Profile-scaled. Wrong = non-punitive retry; the quest always completes.",
+  "id": "market-day",
+  "title": "Market Day at Sunmere",
+  "subject": "math",
+  "competency": "money-change",
+  "giver": "mira",
+  "fiction": "Mira's market is swamped. Help her make change for three customers.",
+  "tracker": "Help 3 customers at the market",
+  "consequence": "marketStocked",
+  "reward": { "gold": 12 },
+  "rounds": {
+    "mage": [
+      { "mode": "pay", "target": 7,  "coins": [1, 5] },
+      { "mode": "pay", "target": 12, "coins": [1, 5] },
+      { "mode": "pay", "target": 15, "coins": [1, 5, 10] }
+    ],
+    "adventurer": [
+      { "mode": "change", "price": 6,  "paid": 10, "coins": [1, 5, 10, 25] },
+      { "mode": "change", "price": 13, "paid": 20, "coins": [1, 5, 10, 25] },
+      { "mode": "change", "price": 18, "paid": 25, "coins": [1, 5, 10, 25] }
+    ]
+  }
+}

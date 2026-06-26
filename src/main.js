@@ -5,6 +5,7 @@ import BootScene from './scenes/BootScene.js';
 import PreloadScene from './scenes/PreloadScene.js';
 import TitleScene from './scenes/TitleScene.js';
 import WorldScene from './scenes/WorldScene.js';
+import TownScene from './scenes/TownScene.js';
 import UIScene from './scenes/UIScene.js';
 import CharacterScene from './scenes/CharacterScene.js';
 
@@ -25,8 +26,10 @@ const config = {
     arcade: { gravity: { y: 0 }, debug: false },
   },
   // Order matters: Boot → Preload → Title. World + UI start on demand.
-  scene: [BootScene, PreloadScene, TitleScene, WorldScene, UIScene, CharacterScene],
+  // World + Town are gameplay scenes; UI overlays on top (registered after them).
+  scene: [BootScene, PreloadScene, TitleScene, WorldScene, TownScene, UIScene, CharacterScene],
 };
 
-// eslint-disable-next-line no-new
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+// Expose for automated playtests / debugging in the browser console.
+if (typeof window !== 'undefined') window.__game = game;
