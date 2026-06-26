@@ -1,0 +1,103 @@
+{
+  "source": "index.html",
+  "extractedAt": "2026-06-26",
+  "geometry": "INTENTIONALLY OMITTED — design fresh maps in Tiled",
+  "areaOrder": [
+    "farm",
+    "town",
+    "wilds",
+    "deepwoods",
+    "mine"
+  ],
+  "areas": [
+    {
+      "id": "farm",
+      "label": "Back to the Farm!",
+      "connectsLeft": null,
+      "connectsRight": "town",
+      "npcs": [],
+      "enemies": [],
+      "hasShop": false,
+      "hasForge": false,
+      "hasQuestGiver": false,
+      "note": null
+    },
+    {
+      "id": "town",
+      "label": "Welcome to Town!",
+      "connectsLeft": "farm",
+      "connectsRight": "wilds",
+      "npcs": [
+        {
+          "id": "mira",
+          "name": "Mira",
+          "role": "quests"
+        },
+        {
+          "id": "bram",
+          "name": "Bram",
+          "role": "shop"
+        },
+        {
+          "id": "gunnar",
+          "name": "Gunnar",
+          "role": "forge"
+        }
+      ],
+      "enemies": [],
+      "hasShop": true,
+      "hasForge": true,
+      "hasQuestGiver": true,
+      "note": null
+    },
+    {
+      "id": "wilds",
+      "label": "Into the Wilds!",
+      "connectsLeft": "town",
+      "connectsRight": "deepwoods",
+      "npcs": [],
+      "enemies": [
+        "slime",
+        "bat",
+        "goblin"
+      ],
+      "hasShop": false,
+      "hasForge": false,
+      "hasQuestGiver": false,
+      "note": null
+    },
+    {
+      "id": "deepwoods",
+      "label": "The Deep Woods... be careful!",
+      "connectsLeft": "wilds",
+      "connectsRight": "mine",
+      "npcs": [],
+      "enemies": [
+        "wolf",
+        "bear",
+        "troll",
+        "shadow_warden"
+      ],
+      "hasShop": false,
+      "hasForge": false,
+      "hasQuestGiver": false,
+      "note": null
+    },
+    {
+      "id": "mine",
+      "label": "The Mine... danger ahead!",
+      "connectsLeft": "deepwoods",
+      "connectsRight": null,
+      "npcs": [],
+      "enemies": [
+        "rock_golem",
+        "magma_slug",
+        "crystal_wyrm"
+      ],
+      "hasShop": false,
+      "hasForge": false,
+      "hasQuestGiver": false,
+      "note": null
+    }
+  ]
+}
