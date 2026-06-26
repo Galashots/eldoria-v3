@@ -1,0 +1,21 @@
+{
+  "_comment": "Gear ported from the original. Dropped by enemies, auto-equipped if better than the current slot item. Weapon damage ladder keeps Eldoria Blade (12) the best WEAPON; Wyrm Scale (9) the best ARMOR.",
+  "gear": {
+    "wooden_sword":  { "name": "Wooden Sword",   "slot": "weapon", "damage": 2,  "tier": 1 },
+    "leather_cap":   { "name": "Leather Cap",    "slot": "head",   "damage": 1,  "tier": 1 },
+    "hero_cape":     { "name": "Hero's Cape",    "slot": "cape",   "damage": 1,  "tier": 1 },
+    "iron_armor":    { "name": "Iron Armor",     "slot": "body",   "damage": 2,  "tier": 1 },
+    "crystal_blade": { "name": "Crystal Blade",  "slot": "weapon", "damage": 5,  "tier": 1 },
+    "steel_sword":   { "name": "Steel Sword",    "slot": "weapon", "damage": 6,  "tier": 2 },
+    "crystal_staff": { "name": "Crystal Staff",  "slot": "weapon", "damage": 8,  "tier": 2 },
+    "crystal_crown": { "name": "Crystal Crown",  "slot": "head",   "damage": 3,  "tier": 2 },
+    "guardian_armor":{ "name": "Guardian Armor", "slot": "body",   "damage": 4,  "tier": 2 },
+    "shadow_cape":   { "name": "Shadow Cape",    "slot": "cape",   "damage": 3,  "tier": 2 },
+    "eldoria_blade": { "name": "Eldoria Blade",  "slot": "weapon", "damage": 12, "tier": 2, "trophy": true },
+    "obsidian_blade":{ "name": "Obsidian Blade", "slot": "weapon", "damage": 10, "tier": 3 },
+    "titan_helm":    { "name": "Titan Helm",     "slot": "head",   "damage": 5,  "tier": 3 },
+    "dragon_cape":   { "name": "Dragon Cape",    "slot": "cape",   "damage": 5,  "tier": 3 },
+    "mithril_armor": { "name": "Mithril Armor",  "slot": "body",   "damage": 6,  "tier": 3 },
+    "wyrm_scale":    { "name": "Wyrm Scale Armor","slot": "body",  "damage": 9,  "tier": 3, "trophy": true }
+  }
+}
