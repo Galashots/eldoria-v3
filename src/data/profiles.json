@@ -1,0 +1,7 @@
+{
+  "_comment": "Learner profiles are reading-level slots, not child names — either kid can pick either. Difficulty for all curriculum keys off this id.",
+  "profiles": {
+    "adventurer": { "label": "Adventurer", "readingLevel": "older (~grade 5)", "math": ["multiplication", "subtraction", "estimation"] },
+    "mage":       { "label": "Mage",       "readingLevel": "early (~grade 2)", "math": ["addition", "counting (totals \u2264 20)"] }
+  }
+}
