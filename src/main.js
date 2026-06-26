@@ -8,6 +8,7 @@ import WorldScene from './scenes/WorldScene.js';
 import TownScene from './scenes/TownScene.js';
 import UIScene from './scenes/UIScene.js';
 import CharacterScene from './scenes/CharacterScene.js';
+import SettingsScene from './scenes/SettingsScene.js';
 
 const config = {
   type: Phaser.AUTO,            // WebGL where available (Phaser 4's new renderer), Canvas fallback
@@ -27,7 +28,7 @@ const config = {
   },
   // Order matters: Boot → Preload → Title. World + UI start on demand.
   // World + Town are gameplay scenes; UI overlays on top (registered after them).
-  scene: [BootScene, PreloadScene, TitleScene, WorldScene, TownScene, UIScene, CharacterScene],
+  scene: [BootScene, PreloadScene, TitleScene, WorldScene, TownScene, UIScene, CharacterScene, SettingsScene],
 };
 
 const game = new Phaser.Game(config);

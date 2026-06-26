@@ -5,6 +5,8 @@ import { save } from '../state/save.js';
 import {
   getQuest, questStatus, startQuest, advanceRound, completeQuest, roundsFor,
 } from '../systems/quests.js';
+import { getSettings, speak } from '../systems/settings.js';
+import { getParental } from '../systems/parental.js';
 
 // Town hub. Built in the same idiom as WorldScene (procedural tilemap via the T enum,
 // y-sorted props, pointer/WASD movement) but the interactables are NPCs + a market stall
@@ -220,6 +222,7 @@ export default class TownScene extends Phaser.Scene {
   }
 
   spawnAmbiance() {
+    if (getSettings().reduceMotion) return; // calmer screen for motion sensitivity
     this.leaves = this.add.particles(0, 0, 'p_leaf', {
       x: { min: 0, max: this.mapPixelW }, y: -10, lifespan: 8000,
       speedY: { min: 8, max: 22 }, speedX: { min: -14, max: 6 }, scale: 2,
@@ -281,13 +284,14 @@ export default class TownScene extends Phaser.Scene {
     if (status === 'done') { this.showDialog('Stall', 'Fresh produce, all stocked up. Lovely!'); return; }
 
     const quest = getQuest(QUEST_ID);
-    const rounds = roundsFor(quest, this.profile);
+    const profile = getParental().forceYoungReader ? 'mage' : this.profile;
+    const rounds = roundsFor(quest, profile);
     const step = startQuest(player, QUEST_ID).step;
     const round = rounds[step];
 
     this.modalOpen = true;
     const ui = this.scene.get('UI');
-    ui.showMarketStall(quest, round, step, rounds.length, this.profile, () => {
+    ui.showMarketStall(quest, round, step, rounds.length, profile, () => {
       // round served
       const done = advanceRound(player, quest);
       save(player);
@@ -315,6 +319,7 @@ export default class TownScene extends Phaser.Scene {
 
   // ── Dialog (screen-space, tap to dismiss) ────────────────────────────────────
   showDialog(speaker, text) {
+    speak(`${speaker} says. ${text}`);
     if (this._dialog) this._dialog.destroy();
     const w = this.scale.width;
     const h = this.scale.height;

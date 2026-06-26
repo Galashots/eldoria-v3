@@ -27,8 +27,8 @@ See also: [vision/pillars.md](vision/pillars.md) ·
 | **Quest architecture** | ❌ Missing | No quest state, log, fiction→evidence→consequence structure. |
 | Wilderness + dungeon + combat | ❌ Missing | `combat`/enemy data written but unwired. No scene transitions between areas. |
 | One armor family (5–8 slots) | ⚠️ Partial | Gear table + equip screen exist; not yet earned through play. |
-| Accessibility defaults on boot | ❌ Missing | No subtitle/text-size/audio-channel settings. |
-| Parental controls | ❌ Missing | No time caps, read-aloud toggle, or learning summary. |
+| Accessibility defaults on boot | ✅ Built (M2) | Captions on, scalable text, reduce-motion, read-aloud, volumes — accessible from first boot. |
+| Parental controls | ✅ Built (M2) | Grown-up-gated time cap, shop lock, young-reader, + exportable learning summary. |
 | Stealth-assessment instrumentation | ❌ Missing | No evidence log capturing what the child actually understands. |
 
 **Read:** the *foundations* are excellent and cohesive; the *missing* pieces are the hub,
@@ -66,13 +66,14 @@ committed state. **Teach one new verb at a time, then recombine** (the guide's l
 - _Files:_ `scenes/TownScene.js`, `systems/quests.js`, `data/quests/market-day.json`,
   market overlay in `scenes/UIScene.js`, exit wiring in `scenes/WorldScene.js`, `main.js`.
 
-### M2 — Accessibility + parental baseline + profile polish
-- First-boot defaults: subtitles on, scalable text, separate music/speech/SFX sliders,
-  color-independent cues, large touch targets.
-- Parental panel: daily time cap, read-aloud toggle, younger-reader UI profile, exportable
-  learning summary (reads the evidence log from M1).
+### M2 — Accessibility + parental baseline + profile polish  ✅ *done*
+- First-boot accessible defaults: captions on, scalable text, music/speech/SFX volumes,
+  reduce-motion, color-independent cues, large touch targets, read-aloud (Web Speech).
+- Parental panel behind a grown-up gate: daily time cap (with gentle break overlay + "+15 min"
+  gate), shop lock, forced younger-reader profile, and an exportable learning summary that reads
+  the M1 evidence log.
 - _Files:_ `scenes/SettingsScene.js`, `systems/settings.js`, `systems/parental.js`,
-  `curriculum/evidence-report.js`.
+  `curriculum/evidence-report.js`; see [design/accessibility-and-parental.md](design/accessibility-and-parental.md).
 
 ### M3 — Wilds zone + combat (one verb) + first armor family
 - Wilderness area east of town with a visible landmark and one optional route (the guide's

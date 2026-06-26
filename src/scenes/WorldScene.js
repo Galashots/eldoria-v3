@@ -4,6 +4,7 @@ import { T } from '../render/textures.js';
 import { canPlant, plant, isReady, harvest } from '../systems/farming.js';
 import { harvestBonusQuestion } from '../curriculum/questions.js';
 import { save } from '../state/save.js';
+import { getSettings } from '../systems/settings.js';
 import cropsData from '../data/crops.json';
 
 const MAP_W = 25;
@@ -234,6 +235,7 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   spawnAmbiance() {
+    if (getSettings().reduceMotion) return; // calmer screen for motion sensitivity
     // Drifting leaves across the view (cosmetic, screen-space via scrollFactor 0
     // would detach from world; instead emit in world space above the camera).
     this.leaves = this.add.particles(0, 0, 'p_leaf', {

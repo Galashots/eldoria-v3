@@ -3,6 +3,9 @@ import { equippedDamage } from '../systems/inventory.js';
 import { harvestBonusQuestion } from '../curriculum/questions.js';
 import { roundTarget, recordEvidence, fewestCoins, activeQuestTracker } from '../systems/quests.js';
 import { save } from '../state/save.js';
+import { getSettings, fontPx, speak } from '../systems/settings.js';
+import { getParental, addPlaytime, capReached, makeParentGate } from '../systems/parental.js';
+import { makeOptions } from '../curriculum/options.js';
 import cropsData from '../data/crops.json';
 
 const BASE_ATTACK = 4;
@@ -48,9 +51,13 @@ export default class UIScene extends Phaser.Scene {
 
     // Quest tracker — one plain sentence + a visual cue (the guide's kid-UI rule).
     this.questText = this.add.text(12, HUD_H + 8, '', {
-      fontFamily: 'Georgia, serif', fontSize: '13px', color: '#ffe9b0',
+      fontFamily: 'Georgia, serif', fontSize: fontPx(13), color: '#ffe9b0',
       stroke: '#1a1008', strokeThickness: 3,
     }).setOrigin(0, 0).setDepth(101).setVisible(false);
+
+    // Daily play-time tracking (parental). Counts only while a gameplay scene is active.
+    this.capShown = false;
+    this.time.addEvent({ delay: 5000, loop: true, callback: () => this.tickPlaytime() });
 
     // Character / Inventory button
     const openChar = () => {
@@ -66,6 +73,19 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif', fontSize: '14px', color: '#ffe9b0',
     }).setOrigin(0.5).setDepth(101);
     this.input.keyboard.on('keydown-I', openChar);
+
+    // Settings (gear) — accessibility + parental controls.
+    const openSettings = () => {
+      if (this.scene.isActive('Settings')) return;
+      const active = this.registry.get('activeScene') || 'World';
+      this.scene.pause(active);
+      this.scene.launch('Settings', { from: active });
+    };
+    this.add.rectangle(width - 130, 20, 36, 28, 0x2e2418)
+      .setStrokeStyle(2, 0xc9a86a).setDepth(100)
+      .setInteractive({ useHandCursor: true }).on('pointerup', openSettings);
+    this.add.text(width - 130, 20, '⚙', { fontSize: '18px', color: '#ffe9b0' }).setOrigin(0.5).setDepth(101);
+    this.input.keyboard.on('keydown-O', openSettings);
 
     // ── Bottom seed hotbar ─────────────────────────────────────────────────
     this.hotbarBg = this.add.rectangle(width / 2, height, width, HOTBAR_H, 0x1a1008)
@@ -152,6 +172,75 @@ export default class UIScene extends Phaser.Scene {
     }
   }
 
+  // ── Daily play-time cap (parental) ────────────────────────────────────────
+  tickPlaytime() {
+    const active = this.registry.get('activeScene');
+    if (active !== 'World' && active !== 'Town') return; // only count active play
+    if (this.scene.isPaused(active)) return;               // not while a menu is open
+    addPlaytime(5000);
+    if (!this.capShown && capReached()) this.showTimeUp();
+  }
+
+  showTimeUp() {
+    this.capShown = true;
+    const active = this.registry.get('activeScene');
+    if (active) this.scene.pause(active);
+    const { width, height } = this.scale;
+
+    const els = [];
+    const reg = (o) => { els.push(o); return o; };
+    reg(this.add.rectangle(width / 2, height / 2, width, height, 0x0a0a14, 0.9).setDepth(300).setInteractive());
+    reg(this.add.text(width / 2, height / 2 - 70, '🌙  Time for a break', {
+      fontFamily: 'Georgia, serif', fontSize: fontPx(26), color: '#ffe9b0',
+    }).setOrigin(0.5).setDepth(301));
+    reg(this.add.text(width / 2, height / 2 - 26, "That's your play time for today.\nAsk a grown-up if you'd like a little more.", {
+      fontFamily: 'Georgia, serif', fontSize: fontPx(15), color: '#cbb890', align: 'center',
+    }).setOrigin(0.5).setDepth(301));
+    speak("Time for a break. That's your play time for today.");
+
+    const close = () => { for (const o of els) o.destroy(); };
+
+    // Grown-up "more time" gate (+15 min).
+    const gateBtn = reg(this.add.rectangle(width / 2 - 110, height / 2 + 60, 200, 46, 0x4a3a6a)
+      .setStrokeStyle(2, 0xc9a86a).setDepth(301).setInteractive({ useHandCursor: true }));
+    reg(this.add.text(width / 2 - 110, height / 2 + 60, 'Grown-up: +15 min', {
+      fontFamily: 'Georgia, serif', fontSize: fontPx(14), color: '#fff',
+    }).setOrigin(0.5).setDepth(301));
+    gateBtn.on('pointerup', () => { close(); this.moreTimeGate(active); });
+
+    const stopBtn = reg(this.add.rectangle(width / 2 + 110, height / 2 + 60, 200, 46, 0x5a2a22)
+      .setStrokeStyle(2, 0xc9a86a).setDepth(301).setInteractive({ useHandCursor: true }));
+    reg(this.add.text(width / 2 + 110, height / 2 + 60, 'Stop for today', {
+      fontFamily: 'Georgia, serif', fontSize: fontPx(14), color: '#fff',
+    }).setOrigin(0.5).setDepth(301));
+    stopBtn.on('pointerup', () => { close(); this.scene.stop('Settings'); this.scene.stop('Character'); this.scene.start('Title'); });
+  }
+
+  moreTimeGate(active) {
+    const { width, height } = this.scale;
+    const gate = makeParentGate();
+    const els = [];
+    const reg = (o) => { els.push(o); return o; };
+    reg(this.add.rectangle(width / 2, height / 2, width, height, 0x0a0a14, 0.9).setDepth(310).setInteractive());
+    reg(this.add.text(width / 2, height / 2 - 90, 'Ask a grown-up', { fontFamily: 'Georgia, serif', fontSize: fontPx(20), color: '#ffe9b0' }).setOrigin(0.5).setDepth(311));
+    reg(this.add.text(width / 2, height / 2 - 50, `${gate.text} = ?`, { fontFamily: 'Georgia, serif', fontSize: fontPx(28), color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setDepth(311));
+    const close = () => { for (const o of els) o.destroy(); };
+    const grant = () => {
+      addPlaytime(-15 * 60000); // give back 15 minutes
+      this.capShown = false;
+      close();
+      if (active) this.scene.resume(active);
+    };
+    makeOptions(gate.answer).forEach((opt, i) => {
+      const col = i % 2; const row = Math.floor(i / 2);
+      const x = width / 2 + (col ? 70 : -70);
+      const y = height / 2 + 10 + row * 60;
+      const b = reg(this.add.rectangle(x, y, 120, 50, 0x2e2418).setStrokeStyle(2, 0xc9a86a).setDepth(311).setInteractive({ useHandCursor: true }));
+      reg(this.add.text(x, y, `${opt}`, { fontFamily: 'Georgia, serif', fontSize: fontPx(20), color: '#fff' }).setOrigin(0.5).setDepth(311));
+      b.on('pointerup', () => { if (opt === gate.answer) grant(); });
+    });
+  }
+
   refreshHotbar() {
     const p = this.registry.get('player');
     if (!p) return;
@@ -170,9 +259,10 @@ export default class UIScene extends Phaser.Scene {
   // ── Harvest bonus modal (parchment skin) ─────────────────────────────────
   showHarvestModal(crop, callback) {
     const { width, height } = this.scale;
-    const profile = this.registry.get('profile') || 'adventurer';
+    const profile = getParental().forceYoungReader ? 'mage' : (this.registry.get('profile') || 'adventurer');
     const q = harvestBonusQuestion(profile);
     const def = cropsData.crops[crop.type];
+    speak(`Bonus. ${q.text.replace('×', 'times').replace('=', 'equals')}`);
 
     // Dim overlay
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
@@ -297,9 +387,10 @@ export default class UIScene extends Phaser.Scene {
       ? `The basket costs ${round.price}.\nThe customer pays with ${round.paid}. Give the right change!`
       : `Fill the basket — tap coins to pay exactly ${target}.`;
     reg(this.add.text(px, py - 98, prompt, {
-      fontFamily: 'Georgia, serif', fontSize: '16px', color: '#2a1c10', align: 'center',
+      fontFamily: 'Georgia, serif', fontSize: fontPx(16), color: '#2a1c10', align: 'center',
       wordWrap: { width: panelW - 50 },
     }).setOrigin(0.5).setDepth(202));
+    speak(prompt);
 
     const tallyText = reg(this.add.text(px, py - 44, 'You gave: 0', {
       fontFamily: 'Georgia, serif', fontSize: '20px', color: '#2a1c10', fontStyle: 'bold',

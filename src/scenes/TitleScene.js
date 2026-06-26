@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import profilesData from '../data/profiles.json';
 import { load } from '../state/save.js';
+import { getSettings } from '../systems/settings.js';
 
 // Title + profile select. Mirrors the original's two reading-level slots. Picking
 // one stores it on the game registry so every scene/system can read the profile.
@@ -12,11 +13,24 @@ export default class TitleScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
+    // Apply the saved sound-effects volume on boot (accessible defaults already on).
+    this.sound.volume = getSettings().volSfx;
+
     this.add.text(width / 2, height * 0.22, 'Realm of Eldoria', {
       fontFamily: 'Georgia, serif',
       fontSize: '44px',
       color: '#ffe9b0',
     }).setOrigin(0.5);
+
+    // Settings (accessibility + parental) reachable before play, too.
+    const gear = this.add.rectangle(width - 80, 36, 150, 40, 0x2e2418)
+      .setStrokeStyle(2, 0xc9a86a).setInteractive({ useHandCursor: true });
+    this.add.text(width - 80, 36, '⚙ Settings', { fontFamily: 'Georgia, serif', fontSize: '16px', color: '#ffe9b0' }).setOrigin(0.5);
+    gear.on('pointerup', () => {
+      if (this.scene.isActive('Settings')) return;
+      this.scene.pause('Title');
+      this.scene.launch('Settings', { from: 'Title' });
+    });
 
     this.add.text(width / 2, height * 0.34, 'Choose your hero', {
       fontSize: '20px', color: '#cbb890',
