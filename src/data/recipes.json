@@ -1,0 +1,11 @@
+{
+  "_comment": "Cooking recipes ported from the original. Hidden math is RATIO/efficiency: HP healed per crop spent. cost is crops consumed (keyed by crop type); heal is HP per portion.",
+  "order": ["veggie_soup", "carrot_stew", "corn_chowder", "pumpkin_pie", "starfruit_elixir"],
+  "recipes": {
+    "veggie_soup":      { "name": "Veggie Soup",      "cost": { "turnip": 2 },                "heal": 8,  "color": "#88cc55" },
+    "carrot_stew":      { "name": "Carrot Stew",      "cost": { "carrot": 2 },                "heal": 18, "color": "#ff9933" },
+    "corn_chowder":     { "name": "Corn Chowder",     "cost": { "corn": 2 },                  "heal": 25, "color": "#ffe066" },
+    "pumpkin_pie":      { "name": "Pumpkin Pie",      "cost": { "pumpkin": 1, "carrot": 1 },  "heal": 40, "color": "#ffcc44" },
+    "starfruit_elixir": { "name": "Starfruit Elixir", "cost": { "starfruit": 1, "pumpkin": 1 }, "heal": 60, "color": "#ee88ee" }
+  }
+}
