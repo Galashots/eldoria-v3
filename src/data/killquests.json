@@ -1,0 +1,11 @@
+{
+  "_comment": "Kill-quest definitions ported from the original (Mira's tasks). Extracted tiers shown; add tier-3 (Mine) entries here as you flesh out the endgame. reward is gold.",
+  "killQuests": [
+    { "target": "slime",  "count": 3, "reward": 15, "name": "Slay 3 Slimes",  "tier": 1 },
+    { "target": "bat",    "count": 3, "reward": 15, "name": "Slay 3 Bats",    "tier": 1 },
+    { "target": "goblin", "count": 2, "reward": 20, "name": "Slay 2 Goblins", "tier": 1 },
+    { "target": "wolf",   "count": 3, "reward": 25, "name": "Slay 3 Wolves",  "tier": 2 },
+    { "target": "bear",   "count": 2, "reward": 30, "name": "Slay 2 Bears",   "tier": 2 },
+    { "target": "troll",  "count": 2, "reward": 35, "name": "Slay 2 Trolls",  "tier": 2 }
+  ]
+}
