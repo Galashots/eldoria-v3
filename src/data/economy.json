@@ -1,0 +1,16 @@
+{
+  "_comment": "Global economy + progression constants and the starting player snapshot, ported from the original.",
+  "startingPlayer": {
+    "gold": 10,
+    "hp": 20,
+    "maxHp": 20,
+    "level": 1,
+    "xp": 0,
+    "seeds": { "turnip": 4, "carrot": 0, "corn": 0, "pumpkin": 0, "starfruit": 0 },
+    "crops": { "turnip": 0, "carrot": 0, "corn": 0, "pumpkin": 0, "starfruit": 0 },
+    "food":  { "veggie_soup": 0, "carrot_stew": 0, "corn_chowder": 0, "pumpkin_pie": 0, "starfruit_elixir": 0 },
+    "gear":  { "weapon": null, "head": null, "body": null, "cape": null }
+  },
+  "heartCrystal": { "hpPerCrystal": 5, "basePrice": 30, "priceStepPerOwned": 15 },
+  "xpForNextLevel": { "_formula": "level * 50", "perLevel": 50 }
+}
