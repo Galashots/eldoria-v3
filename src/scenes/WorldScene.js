@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
-import { TILE, TILES, BLOCKED } from '../config.js';
+import { TILE } from '../config.js';
+import { T } from '../render/textures.js';
 import { canPlant, plant, isReady, harvest } from '../systems/farming.js';
 import { harvestBonusQuestion } from '../curriculum/questions.js';
 import { save } from '../state/save.js';
 import cropsData from '../data/crops.json';
 
-const hexToInt = (hex) => parseInt(hex.replace('#', ''), 16);
+const MAP_W = 25;
+const MAP_H = 19;
+const ZOOM = 2;
+const WALKABLE = new Set([T.GRASS, T.SOIL, T.PATH, T.DOOR, T.EXIT, T.SOIL_WET, T.DIRT, T.GRASS_FLOWER]);
 
 export default class WorldScene extends Phaser.Scene {
   constructor() {
@@ -14,36 +18,31 @@ export default class WorldScene extends Phaser.Scene {
 
   create() {
     this.profile = this.registry.get('profile') || 'adventurer';
-    this.currentArea = this.registry.get('area') || 'farm';
-
-    if (this.cache.tilemap.exists(this.currentArea)) {
-      this.buildFromTiled(this.currentArea);
-    } else {
-      this.buildDemoArena();
-    }
-
-    // ── Farming state ───────────────────────────────────────────────────────
+    this.modalOpen = false;
     this.plantedCrops = new Map();
     this.cropSprites = new Map();
-    this.modalOpen = false;
-    this.modalElements = [];
-    if (!this.registry.get('selectedSeed')) {
-      this.registry.set('selectedSeed', 'turnip');
-    }
+    if (!this.registry.get('selectedSeed')) this.registry.set('selectedSeed', 'turnip');
 
-    // ── Player ──────────────────────────────────────────────────────────────
-    const spawn = this.spawnPoint || { x: 5 * TILE, y: 8 * TILE };
-    this.player = this.physics.add.sprite(spawn.x, spawn.y, 'player');
+    this.buildFarm();
+
+    // ── Player (animated, 2x, y-sorted) ──────────────────────────────────────
+    const spawn = this.spawnPoint;
+    this.player = this.physics.add.sprite(spawn.x, spawn.y, 'hero', 0).setScale(2);
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(20, 20).setOffset(6, 10);
-    if (this.collisionLayer) this.physics.add.collider(this.player, this.collisionLayer);
+    this.player.body.setSize(10, 8).setOffset(3, 8);
+    this.facing = 'down';
+    this.player.play('hero-idle-down');
+    this.physics.add.collider(this.player, this.collisionLayer);
+    if (this.solids) this.physics.add.collider(this.player, this.solids);
 
     // ── Camera ──────────────────────────────────────────────────────────────
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.setZoom(ZOOM);
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setBounds(0, 0, this.mapPixelW, this.mapPixelH);
     this.physics.world.setBounds(0, 0, this.mapPixelW, this.mapPixelH);
+    this.cameras.main.setRoundPixels(true);
 
-    // ── Input: keyboard (desktop) + tap-to-move/farm (iPad) ─────────────────
+    // ── Input ────────────────────────────────────────────────────────────────
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
     this.touchTarget = null;
@@ -51,355 +50,331 @@ export default class WorldScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p) => {
       if (this.modalOpen) return;
-      const worldPt = this.cameras.main.getWorldPoint(p.x, p.y);
-      const tx = Math.floor(worldPt.x / TILE);
-      const ty = Math.floor(worldPt.y / TILE);
-
+      const w = this.cameras.main.getWorldPoint(p.x, p.y);
+      const tx = Math.floor(w.x / TILE);
+      const ty = Math.floor(w.y / TILE);
       if (this.isSoilTile(tx, ty)) {
-        const tileCX = tx * TILE + TILE / 2;
-        const tileCY = ty * TILE + TILE / 2;
-        const dist = Math.hypot(tileCX - this.player.x, tileCY - this.player.y);
-
-        if (dist < TILE * 1.8) {
+        const cxp = tx * TILE + TILE / 2;
+        const cyp = ty * TILE + TILE / 2;
+        if (Math.hypot(cxp - this.player.x, cyp - this.player.y) < TILE * 1.8) {
           this.tryFarmAction(tx, ty);
-          return;
+        } else {
+          this.pendingFarmTile = { x: tx, y: ty };
+          this.touchTarget = { x: cxp, y: cyp };
         }
-        this.pendingFarmTile = { x: tx, y: ty };
-        this.touchTarget = { x: tileCX, y: tileCY };
         return;
       }
-
       this.pendingFarmTile = null;
-      this.touchTarget = { x: worldPt.x, y: worldPt.y };
+      this.touchTarget = { x: w.x, y: w.y };
     });
+    this.input.on('pointerup', () => { if (!this.pendingFarmTile) this.touchTarget = null; });
 
-    this.input.on('pointerup', () => {
-      if (!this.pendingFarmTile) this.touchTarget = null;
-    });
-
-    this.speed = 150;
+    this.spawnAmbiance();
   }
 
   update() {
     if (!this.player) return;
-
-    if (this.modalOpen) {
-      this.player.body.setVelocity(0);
-      this.updateCropGrowth();
-      return;
-    }
+    if (this.modalOpen) { this.player.body.setVelocity(0); this.updateCropGrowth(); return; }
 
     const body = this.player.body;
     body.setVelocity(0);
-
-    // Keyboard
-    let vx = 0;
-    let vy = 0;
+    const speed = 130;
+    let vx = 0; let vy = 0;
     if (this.cursors.left.isDown || this.wasd.A.isDown) vx -= 1;
     if (this.cursors.right.isDown || this.wasd.D.isDown) vx += 1;
     if (this.cursors.up.isDown || this.wasd.W.isDown) vy -= 1;
     if (this.cursors.down.isDown || this.wasd.S.isDown) vy += 1;
 
-    if (vx || vy) {
-      body.setVelocity(vx * this.speed, vy * this.speed);
-      body.velocity.normalize().scale(this.speed);
-      this.touchTarget = null;
-      this.pendingFarmTile = null;
-    } else if (this.touchTarget) {
+    if (vx || vy) { this.touchTarget = null; this.pendingFarmTile = null; }
+    else if (this.touchTarget) {
       const dx = this.touchTarget.x - this.player.x;
       const dy = this.touchTarget.y - this.player.y;
-      if (Math.hypot(dx, dy) > 4) {
-        const a = Math.atan2(dy, dx);
-        body.setVelocity(Math.cos(a) * this.speed, Math.sin(a) * this.speed);
-      } else {
+      if (Math.hypot(dx, dy) > 4) { vx = dx; vy = dy; }
+      else {
         this.touchTarget = null;
         if (this.pendingFarmTile) {
-          const { x, y } = this.pendingFarmTile;
-          this.pendingFarmTile = null;
+          const { x, y } = this.pendingFarmTile; this.pendingFarmTile = null;
           this.tryFarmAction(x, y);
         }
       }
     }
 
+    if (vx || vy) {
+      const len = Math.hypot(vx, vy);
+      body.setVelocity((vx / len) * speed, (vy / len) * speed);
+      // facing: dominant axis
+      if (Math.abs(vx) > Math.abs(vy)) this.facing = vx < 0 ? 'left' : 'right';
+      else this.facing = vy < 0 ? 'up' : 'down';
+      const key = `hero-walk-${this.facing}`;
+      if (this.player.anims.currentAnim?.key !== key) this.player.play(key);
+    } else {
+      const key = `hero-idle-${this.facing}`;
+      if (this.player.anims.currentAnim?.key !== key) this.player.play(key);
+    }
+
+    this.player.setDepth(this.player.y);
     this.updateCropGrowth();
-    this.checkExitTile();
   }
 
-  // ── Farming ────────────────────────────────────────────────────────────────
+  // ── Farm build ──────────────────────────────────────────────────────────────
+  buildFarm() {
+    const G = T.GRASS;
+    const data = [];
+    for (let y = 0; y < MAP_H; y++) {
+      const row = [];
+      for (let x = 0; x < MAP_W; x++) {
+        row.push(Math.random() < 0.06 ? T.GRASS_FLOWER : G);
+      }
+      data.push(row);
+    }
+    // Tilled soil field (left-centre)
+    this.soilRect = { x0: 4, y0: 7, x1: 9, y1: 11 };
+    for (let y = this.soilRect.y0; y <= this.soilRect.y1; y++)
+      for (let x = this.soilRect.x0; x <= this.soilRect.x1; x++) data[y][x] = T.SOIL;
+    // A rounded pond (right side)
+    const pond = [[16, 5], [17, 5], [18, 5], [16, 6], [17, 6], [18, 6], [19, 6],
+      [16, 7], [17, 7], [18, 7], [19, 7], [17, 8], [18, 8]];
+    pond.forEach(([x, y]) => { data[y][x] = T.WATER; });
+    // A sand path down the middle
+    for (let y = 2; y < MAP_H - 1; y++) data[y][12] = T.PATH;
+    for (let x = 10; x < 14; x++) data[14][x] = T.PATH;
 
+    const map = this.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
+    const tileset = map.addTilesetImage('tiles');
+    const layer = map.createLayer(0, tileset, 0, 0);
+    layer.setCollisionByExclusion([...WALKABLE]);
+    layer.setDepth(-10);
+    this.groundLayer = layer;
+    this.collisionLayer = layer;
+
+    this.mapPixelW = MAP_W * TILE;
+    this.mapPixelH = MAP_H * TILE;
+    this.spawnPoint = { x: 7 * TILE, y: 13 * TILE };
+
+    this.placeProps();
+  }
+
+  // Place y-sorted props. Origin bottom-centre so depth = y reads as "feet".
+  prop(name, tx, ty, opts = {}) {
+    const px = tx * TILE + (opts.ox ?? TILE / 2);
+    const py = ty * TILE + (opts.oy ?? TILE);
+    const img = this.add.image(px, py, 'village', name).setOrigin(0.5, 1).setScale(2);
+    img.setDepth(opts.flat ? -5 : py);
+    return img;
+  }
+
+  placeProps() {
+    this.solids = this.physics.add.staticGroup();
+
+    // Tree line along top + left/right edges (decorative forest border)
+    const treeSpots = [
+      [1, 2], [4, 1], [7, 2], [10, 1], [15, 1], [18, 2], [21, 1], [23, 2],
+      [1, 6], [1, 10], [1, 14], [23, 6], [23, 10], [23, 15],
+      [3, 16], [20, 12], [15, 15],
+    ];
+    treeSpots.forEach(([x, y]) => {
+      const t = this.prop('tree', x, y);
+      // slim trunk collider
+      const trunk = this.solids.create(t.x, t.y - 6, null).setVisible(false);
+      trunk.body.setSize(14, 10).setOffset(-7, -5);
+    });
+
+    // Farmhouse near top-centre-left
+    const house = this.prop('house', 8, 4);
+    const hc = this.solids.create(house.x, house.y - 18, null).setVisible(false);
+    hc.body.setSize(96, 56).setOffset(-48, -40);
+
+    // Fences framing the soil field
+    const { x0, y0, x1, y1 } = this.soilRect;
+    for (let x = x0 - 1; x <= x1 + 1; x++) { this.prop('fence', x, y0 - 1); this.prop('fence', x, y1 + 1); }
+    for (let y = y0; y <= y1; y++) { this.prop('fence', x0 - 1, y); this.prop('fence', x1 + 1, y); }
+
+    // Bushes + a pig for life
+    [[14, 9], [20, 9], [6, 15], [19, 16], [2, 12]].forEach(([x, y]) => this.prop('bush', x, y));
+
+    // Scatter grass tufts for detail
+    for (let i = 0; i < 18; i++) {
+      const gx = (2 + Math.random() * (MAP_W - 4)) * TILE;
+      const gy = (2 + Math.random() * (MAP_H - 4)) * TILE;
+      const tx = Math.floor(gx / TILE);
+      const ty = Math.floor(gy / TILE);
+      const tile = this.groundLayer.getTileAt(tx, ty);
+      if (tile && (tile.index === T.GRASS || tile.index === T.GRASS_FLOWER)) {
+        this.add.image(gx, gy, 'grass_tuft').setScale(2).setAlpha(0.7).setDepth(-4);
+      }
+    }
+
+    this.pig = this.add.sprite(15 * TILE, 11 * TILE, 'pig', 0).setScale(2);
+    this.tweens.add({ targets: this.pig, x: this.pig.x + 40, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+
+  spawnAmbiance() {
+    // Drifting leaves across the view (cosmetic, screen-space via scrollFactor 0
+    // would detach from world; instead emit in world space above the camera).
+    this.leaves = this.add.particles(0, 0, 'p_leaf', {
+      x: { min: 0, max: this.mapPixelW },
+      y: -10,
+      lifespan: 8000,
+      speedY: { min: 8, max: 22 },
+      speedX: { min: -14, max: 6 },
+      scale: 2,
+      rotate: { min: 0, max: 360 },
+      alpha: { start: 0.9, end: 0.5 },
+      frequency: 900,
+      quantity: 1,
+    });
+    this.leaves.setDepth(99999);
+
+    // Day/night tint: gentle color cycle (full cycle = 120s).
+    this.dayTint = this.add.rectangle(
+      this.mapPixelW / 2, this.mapPixelH / 2,
+      this.mapPixelW + 200, this.mapPixelH + 200,
+      0x1a2a55,
+    ).setAlpha(0).setDepth(99998).setBlendMode(Phaser.BlendModes.MULTIPLY);
+    this.tweens.add({
+      targets: this.dayTint,
+      alpha: { from: 0, to: 0.18 },
+      duration: 60000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  // ── Farming ──────────────────────────────────────────────────────────────
   isSoilTile(tx, ty) {
     const tile = this.groundLayer.getTileAt(tx, ty);
-    return tile && tile.index === TILES.SOIL;
+    return tile && (tile.index === T.SOIL || tile.index === T.SOIL_WET);
   }
 
   tryFarmAction(tx, ty) {
     const key = `${tx},${ty}`;
     const crop = this.plantedCrops.get(key);
-
-    if (!crop) {
-      this.plantCrop(tx, ty, key);
-    } else if (crop.status === 'ready' || (crop.status === 'growing' && isReady(crop))) {
+    if (!crop) { this.plantCrop(tx, ty, key); return; }
+    if (crop.status === 'ready' || (crop.status === 'growing' && isReady(crop))) {
       crop.status = 'ready';
       this.harvestCrop(key, crop);
-    } else if (crop.status === 'growing') {
+    } else {
       const remaining = cropsData.crops[crop.type].grow - (Date.now() - crop.plantedAt);
-      this.showToast(`Growing... ${Math.ceil(remaining / 1000)}s`);
+      this.showToast(`Growing… ${Math.ceil(remaining / 1000)}s`);
     }
   }
 
   plantCrop(tx, ty, key) {
     const player = this.registry.get('player');
-    const selectedSeed = this.registry.get('selectedSeed') || 'turnip';
+    const seed = this.registry.get('selectedSeed') || 'turnip';
+    if (!canPlant(player, seed)) { this.showToast(`No ${seed} seeds!`); return; }
 
-    if (!canPlant(player, selectedSeed)) {
-      this.showToast(`No ${selectedSeed} seeds!`);
-      return;
-    }
-
-    const crop = plant(player, selectedSeed, key);
+    const crop = plant(player, seed, key);
     this.plantedCrops.set(key, crop);
     save(player);
-    const ui = this.scene.get('UI');
-    if (ui?.refresh) ui.refresh();
+    this.scene.get('UI')?.refresh?.();
+    this.groundLayer.putTileAt(T.SOIL_WET, tx, ty); // watered look
 
     const px = tx * TILE + TILE / 2;
-    const py = ty * TILE + TILE / 2;
-    const color = hexToInt(cropsData.crops[selectedSeed].color);
-    const sprite = this.add.rectangle(px, py, 10, 10, color).setDepth(5).setScale(0);
-    this.cropSprites.set(key, sprite);
-    this.tweens.add({
-      targets: sprite,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 300,
-      ease: 'Back.easeOut',
-    });
+    const py = ty * TILE + TILE - 2;
+    const spr = this.add.image(px, py, `crop_${seed}`, 0).setOrigin(0.5, 1).setScale(2).setDepth(py);
+    this.cropSprites.set(key, spr);
+    spr.setScale(0); this.tweens.add({ targets: spr, scale: 2, duration: 250, ease: 'Back.easeOut' });
 
-    this.showToast(`Planted ${cropsData.crops[selectedSeed].name}!`);
+    this.dustPuff(px, py);
+    this.showToast(`Planted ${cropsData.crops[seed].name}!`);
   }
 
   harvestCrop(key, crop) {
     const player = this.registry.get('player');
     harvest(player, crop);
     save(player);
-    const ui = this.scene.get('UI');
-    if (ui?.refresh) ui.refresh();
+    this.scene.get('UI')?.refresh?.();
 
-    const sprite = this.cropSprites.get(key);
-    if (sprite) {
-      this.tweens.killTweensOf(sprite);
-      sprite.destroy();
+    const [tx, ty] = key.split(',').map(Number);
+    this.groundLayer.putTileAt(T.SOIL, tx, ty);
+    const spr = this.cropSprites.get(key);
+    const def = cropsData.crops[crop.type];
+    if (spr) {
+      this.tweens.killTweensOf(spr);
+      this.tweens.add({ targets: spr, y: spr.y - 14, alpha: 0, scale: 2.6, duration: 360, ease: 'Power2', onComplete: () => spr.destroy() });
     }
     this.cropSprites.delete(key);
     this.plantedCrops.delete(key);
 
+    this.harvestBurst(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+    this.floatText(tx * TILE + TILE / 2, ty * TILE, `+1 ${def.name}`, '#cdeb8b');
     this.showHarvestModal(crop);
   }
 
+  // Advance crop stage sprites + ready shimmer.
   updateCropGrowth() {
     const now = Date.now();
     for (const [key, crop] of this.plantedCrops) {
-      if (crop.status === 'growing' && isReady(crop, now)) {
+      const def = cropsData.crops[crop.type];
+      const spr = this.cropSprites.get(key);
+      if (!spr) continue;
+      const progress = Math.min(1, (now - crop.plantedAt) / def.grow);
+      const stage = progress >= 1 ? 3 : Math.min(2, Math.floor(progress * 3));
+      if (spr.frame.name != stage) spr.setFrame(stage);
+      if (progress >= 1 && crop.status === 'growing') {
         crop.status = 'ready';
-        const oldSprite = this.cropSprites.get(key);
-        if (oldSprite) {
-          this.tweens.killTweensOf(oldSprite);
-          oldSprite.destroy();
-        }
-        const [tx, ty] = key.split(',').map(Number);
-        const px = tx * TILE + TILE / 2;
-        const py = ty * TILE + TILE / 2;
-        const readyColor = hexToInt(cropsData.crops[crop.type].readyColor);
-        const newSprite = this.add.rectangle(px, py, 20, 20, readyColor).setDepth(5);
-        this.cropSprites.set(key, newSprite);
-        this.tweens.add({
-          targets: newSprite,
-          scaleX: 1.3,
-          scaleY: 1.3,
-          yoyo: true,
-          repeat: -1,
-          duration: 800,
-          ease: 'Sine.easeInOut',
-        });
+        this.tweens.add({ targets: spr, y: spr.y - 2, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.easeInOut' });
+        this.readySparkle(spr.x, spr.y - 16);
       }
     }
   }
 
-  // ── Harvest bonus question modal ──────────────────────────────────────────
-
-  showHarvestModal(crop) {
-    this.modalOpen = true;
-    const { width, height } = this.scale;
-    const cx = width / 2;
-    const cy = height / 2;
-    const cropDef = cropsData.crops[crop.type];
-    const q = harvestBonusQuestion(this.profile);
-    const els = [];
-
-    const dim = this.add.rectangle(cx, cy, width, height, 0x000000, 0.6)
-      .setScrollFactor(0).setDepth(200).setInteractive();
-    els.push(dim);
-
-    els.push(this.add.rectangle(cx, cy, 420, 320, 0x241c12)
-      .setStrokeStyle(3, 0xc9a86a).setScrollFactor(0).setDepth(201));
-
-    els.push(this.add.text(cx, cy - 130, 'HARVEST BONUS', {
-      fontSize: '20px', color: '#ffe9b0', fontFamily: 'Georgia, serif',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-
-    els.push(this.add.text(cx, cy - 95, `Harvested 1 ${cropDef.name}!`, {
-      fontSize: '16px', color: '#88dd44',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-
-    els.push(this.add.text(cx, cy - 68, `Answer for +${cropDef.sell}g bonus gold`, {
-      fontSize: '14px', color: '#cbb890',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-
-    els.push(this.add.text(cx, cy - 25, q.text, {
-      fontSize: '32px', color: '#ffffff', fontFamily: 'Georgia, serif',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-
-    q.options.forEach((opt, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const ox = cx - 95 + col * 190;
-      const oy = cy + 35 + row * 56;
-
-      const btn = this.add.rectangle(ox, oy, 160, 44, 0x4a3a28)
-        .setStrokeStyle(2, 0xc9a86a).setScrollFactor(0).setDepth(202)
-        .setInteractive({ useHandCursor: true });
-      const txt = this.add.text(ox, oy, `${opt}`, {
-        fontSize: '22px', color: '#ffffff',
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(203);
-
-      btn.on('pointerup', () => {
-        this.resolveHarvestAnswer(opt === q.answer, q.answer, cropDef, els);
-      });
-
-      els.push(btn, txt);
-    });
-
-    this.modalElements = els;
+  // ── Juice ──────────────────────────────────────────────────────────────────
+  dustPuff(x, y) {
+    const e = this.add.particles(x, y, 'p_grass', {
+      speed: { min: 20, max: 50 }, angle: { min: 200, max: 340 }, scale: { start: 2, end: 0 },
+      lifespan: 400, quantity: 6, emitting: false,
+    }).setDepth(y + 1);
+    e.explode(6); this.time.delayedCall(500, () => e.destroy());
   }
 
-  resolveHarvestAnswer(correct, correctAnswer, cropDef, els) {
-    els.forEach((el) => el.disableInteractive?.());
-
-    const cx = this.scale.width / 2;
-    const cy = this.scale.height / 2;
-    let msg, color;
-
-    if (correct) {
-      const player = this.registry.get('player');
-      player.gold += cropDef.sell;
-      save(player);
-      const ui = this.scene.get('UI');
-      if (ui?.refresh) ui.refresh();
-      msg = `Correct! +${cropDef.sell}g bonus!`;
-      color = '#88dd44';
-    } else {
-      msg = `Not quite! Answer: ${correctAnswer}`;
-      color = '#dd8844';
-    }
-
-    const result = this.add.text(cx, cy + 135, msg, {
-      fontSize: '18px', color, backgroundColor: '#00000088',
-      padding: { x: 10, y: 6 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(204);
-    els.push(result);
-
-    this.time.delayedCall(1800, () => this.dismissModal(els));
+  harvestBurst(x, y) {
+    const e = this.add.particles(x, y, 'p_leaf', {
+      speed: { min: 40, max: 90 }, scale: { start: 2.2, end: 0 }, lifespan: 600,
+      quantity: 10, emitting: false,
+    }).setDepth(y + 1);
+    e.explode(10); this.time.delayedCall(700, () => e.destroy());
   }
 
-  dismissModal(els) {
-    els.forEach((el) => el.destroy());
-    this.modalElements = [];
-    this.modalOpen = false;
+  readySparkle(x, y) {
+    const e = this.add.particles(x, y, 'p_grass', {
+      speed: { min: 6, max: 18 }, scale: { start: 1.6, end: 0 }, lifespan: 700,
+      frequency: 500, quantity: 1, tint: 0xfff3a0,
+    }).setDepth(y + 1);
+    this.time.delayedCall(60000, () => e.destroy());
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
+  floatText(x, y, msg, color) {
+    const t = this.add.text(x, y, msg, { fontFamily: 'Georgia, serif', fontSize: '13px', color, stroke: '#2a1c10', strokeThickness: 3 })
+      .setOrigin(0.5, 1).setDepth(100000);
+    this.tweens.add({ targets: t, y: y - 24, alpha: 0, duration: 1100, ease: 'Power1', onComplete: () => t.destroy() });
+  }
 
   showToast(msg) {
-    const { width } = this.scale;
-    const txt = this.add.text(width / 2, 80, msg, {
-      fontSize: '16px', color: '#ffffff', backgroundColor: '#00000099',
-      padding: { x: 10, y: 6 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(150);
-
-    this.tweens.add({
-      targets: txt,
-      alpha: 0,
-      y: 50,
-      duration: 2000,
-      ease: 'Power2',
-      onComplete: () => txt.destroy(),
-    });
+    if (this._toast) this._toast.destroy();
+    this._toast = this.add.text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y - 120, msg, {
+      fontFamily: 'Georgia, serif', fontSize: '12px', color: '#fff', backgroundColor: '#000000aa', padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setDepth(100001).setScrollFactor(0);
+    // place in screen space
+    this._toast.setScrollFactor(0).setPosition(this.scale.width / 2, 70);
+    const tref = this._toast;
+    this.tweens.add({ targets: tref, alpha: 0, duration: 1800, delay: 400, onComplete: () => { tref.destroy(); if (this._toast === tref) this._toast = null; } });
   }
 
-  // ── Build from a Tiled export (the real pipeline) ──────────────────────────
-  buildFromTiled(key) {
-    const map = this.make.tilemap({ key });
-    const tileset = map.addTilesetImage('tiles', 'tiles');
-    const ground = map.createLayer('ground', tileset, 0, 0);
-    this.groundLayer = ground;
-    this.collisionLayer = map.createLayer('collision', tileset, 0, 0) || ground;
-    this.collisionLayer.setCollisionByExclusion([-1]);
-
-    const objects = map.getObjectLayer('objects');
-    if (objects) {
-      objects.objects.forEach((o) => {
-        if (o.name === 'spawn') this.spawnPoint = { x: o.x, y: o.y };
-      });
-    }
-    this.mapPixelW = map.widthInPixels;
-    this.mapPixelH = map.heightInPixels;
-  }
-
-  // ── Generated demo arena (no asset files needed) ──────────────────────────
-  buildDemoArena() {
-    const W = 25;
-    const H = 19;
-    const G = TILES.GRASS;
-    const data = [];
-    for (let y = 0; y < H; y++) {
-      const row = [];
-      for (let x = 0; x < W; x++) {
-        const edge = x === 0 || y === 0 || x === W - 1 || y === H - 1;
-        row.push(edge ? TILES.TREE : G);
+  // ── Harvest bonus modal (functional skin; restyled in UI pass) ────────────
+  showHarvestModal(crop) {
+    this.modalOpen = true;
+    const ui = this.scene.get('UI');
+    ui.showHarvestModal(crop, (correct, answer) => {
+      if (correct) {
+        const player = this.registry.get('player');
+        player.gold += cropsData.crops[crop.type].sell;
+        save(player);
+        ui.refresh();
       }
-      data.push(row);
-    }
-    for (let y = 5; y < 8; y++) for (let x = 4; x < 9; x++) data[y][x] = TILES.SOIL;
-    for (let y = 4; y < 7; y++) for (let x = 14; x < 18; x++) data[y][x] = TILES.WATER;
-    data[9][W - 1] = TILES.EXIT;
-
-    const map = this.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
-    const tileset = map.addTilesetImage('tiles');
-    const layer = map.createLayer(0, tileset, 0, 0);
-    layer.setCollisionByExclusion([
-      TILES.GRASS, TILES.SOIL, TILES.PATH, TILES.DOOR, TILES.EXIT,
-    ]);
-
-    this.collisionLayer = layer;
-    this.groundLayer = layer;
-    this.exitTiles = [{ x: W - 1, y: 9 }];
-    this.mapPixelW = W * TILE;
-    this.mapPixelH = H * TILE;
-    this.spawnPoint = { x: 5 * TILE, y: 8 * TILE };
-
-    this.add.text(8, 8, 'DEMO ARENA — tap brown soil tiles to farm!',
-      { fontSize: '12px', color: '#ffffff', backgroundColor: '#00000066' }).setScrollFactor(0).setDepth(50);
-  }
-
-  checkExitTile() {
-    if (!this.exitTiles) return;
-    const tx = Math.floor(this.player.x / TILE);
-    const ty = Math.floor(this.player.y / TILE);
-    const onExit = this.exitTiles.some((t) => t.x === tx && t.y === ty);
-    if (onExit && !this._traveling) {
-      this._traveling = true;
-      this.cameras.main.flash(200);
-      this.time.delayedCall(400, () => { this._traveling = false; });
-    }
+      this.modalOpen = false;
+    });
   }
 }

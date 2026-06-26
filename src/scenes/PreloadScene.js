@@ -1,77 +1,64 @@
 import Phaser from 'phaser';
-import { TILE, TILES } from '../config.js';
+import {
+  buildGroundTileset, buildCropTextures, buildIcons, registerProps,
+} from '../render/textures.js';
 
-// PreloadScene loads art. CRUCIAL for a clean handoff: it works with ZERO binary
-// assets by generating placeholder textures at runtime, so `npm run dev` runs
-// immediately. As you drop real PNGs into public/assets, switch the TODO blocks
-// below from generated placeholders to this.load.image(...) / spritesheet(...).
+// PreloadScene loads the CC0 Ninja Adventure art (vendored in public/assets/ninja),
+// composites the 32px ground tileset, generates the tilled-soil + crop sprites the
+// pack doesn't ship, registers prop sub-frames, and builds the character walk
+// animations. After this, the scenes just place sprites.
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
     super('Preload');
   }
 
   preload() {
-    // A simple loading bar so large real assets later don't look like a freeze.
     const { width, height } = this.scale;
     const bar = this.add.rectangle(width / 2, height / 2, 0, 18, 0x88dd44).setOrigin(0.5);
-    const frame = this.add.rectangle(width / 2, height / 2, 204, 22).setStrokeStyle(2, 0xffffff);
+    this.add.rectangle(width / 2, height / 2, 204, 22).setStrokeStyle(2, 0xffffff);
     this.load.on('progress', (p) => { bar.width = 200 * p; });
 
-    // ── TODO (real art): once your sprites are in public/assets, load them here, e.g.
-    //   this.load.image('shop_building', 'assets/shop_building.png');
-    //   this.load.spritesheet('adventurer-walk', 'assets/adventurer-down-walk.png',
-    //     { frameWidth: 32, frameHeight: 32 });
-    //   this.load.audio('music-town', 'assets/music-town.mp3');
-    // Your original /tools sprite pipeline produces frames already sized for this.
-
-    // ── TODO (real maps): load Tiled exports here, e.g.
-    //   this.load.tilemapTiledJSON('farm', 'maps/farm.tmj');
-    //   this.load.image('tiles', 'assets/tileset.png');
-    // For now WorldScene builds a demo arena from the generated 'tiles' below.
-
-    frame.setDepth(0);
+    const A = 'assets/ninja';
+    // Terrain + props (source images; we composite/slice from these).
+    this.load.image('floor', `${A}/tileset_floor.png`);
+    this.load.image('village', `${A}/tileset_village.png`);
+    this.load.image('animated', `${A}/tileset_animated.png`);
+    // Character: 16x16 frame grid (4 cols x 7 rows).
+    this.load.spritesheet('hero', `${A}/hero.png`, { frameWidth: 16, frameHeight: 16 });
+    this.load.spritesheet('pig', `${A}/pig.png`, { frameWidth: 16, frameHeight: 16 });
+    // Particles + tufts for juice/ambiance.
+    this.load.image('p_grass', `${A}/particle_grass.png`);
+    this.load.image('p_leaf', `${A}/particle_leaf.png`);
+    this.load.image('p_wood', `${A}/particle_wood.png`);
+    this.load.image('grass_tuft', `${A}/grass_tuft.png`);
+    this.load.image('heart_full', `${A}/heart_full.png`);
   }
 
   create() {
-    this.makePlaceholderTileset();
-    this.makePlaceholderPlayer();
+    buildGroundTileset(this);
+    buildCropTextures(this);
+    buildIcons(this);
+    registerProps(this);
+    this.buildHeroAnims();
     this.scene.start('Title');
   }
 
-  // Generates an 8-tile tileset texture keyed 'tiles', one 32px cell per TILES id,
-  // so both the demo arena AND a real Tiled map (tileset named "tiles") render with
-  // no image file present. Replace by loading a real tileset PNG in preload().
-  makePlaceholderTileset() {
-    const colors = {
-      [TILES.GRASS]: 0x4f8a35,
-      [TILES.WATER]: 0x2a6cc0,
-      [TILES.TREE]: 0x1f5c1f,
-      [TILES.SOIL]: 0x6b4226,
-      [TILES.PATH]: 0xc9a86a,
-      [TILES.HOUSE]: 0x8a8a8a,
-      [TILES.DOOR]: 0x7a4a1a,
-      [TILES.EXIT]: 0xd4b483,
-    };
-    const ids = Object.keys(colors).map(Number).sort((a, b) => a - b);
-    const g = this.make.graphics({ x: 0, y: 0 }, false);
-    ids.forEach((id, i) => {
-      g.fillStyle(colors[id], 1);
-      g.fillRect(i * TILE, 0, TILE, TILE);
-      g.lineStyle(1, 0x000000, 0.15);
-      g.strokeRect(i * TILE + 0.5, 0.5, TILE - 1, TILE - 1);
-    });
-    g.generateTexture('tiles', ids.length * TILE, TILE);
-    g.destroy();
-  }
-
-  makePlaceholderPlayer() {
-    const g = this.make.graphics({ x: 0, y: 0 }, false);
-    g.fillStyle(0xffd166, 1);
-    g.fillRoundedRect(5, 4, 22, 26, 5);
-    g.fillStyle(0x2a2a2a, 1);
-    g.fillRect(11, 12, 4, 4);
-    g.fillRect(19, 12, 4, 4);
-    g.generateTexture('player', TILE, TILE);
-    g.destroy();
+  // Ninja Adventure character convention: frames 0-3 down, 4-7 up, 8-11 left,
+  // 12-15 right. (Verified/corrected in-game.) Idle = first frame of each dir.
+  buildHeroAnims() {
+    const dirs = { down: 0, up: 4, left: 8, right: 12 };
+    for (const [dir, base] of Object.entries(dirs)) {
+      this.anims.create({
+        key: `hero-walk-${dir}`,
+        frames: this.anims.generateFrameNumbers('hero', { start: base, end: base + 3 }),
+        frameRate: 8,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: `hero-idle-${dir}`,
+        frames: [{ key: 'hero', frame: base }],
+        frameRate: 1,
+      });
+    }
   }
 }
