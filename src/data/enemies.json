@@ -1,0 +1,15 @@
+{
+  "_comment": "Enemy stat tables ported from the original. Tuned so a no-gear level-1 hero can win tier-1 with perfect answers; losing is always penalty-free (respawn at full HP).",
+  "enemies": {
+    "slime":        { "name": "Slime",         "hp": 15,  "attack": 2, "xpReward": 20,  "tier": 1, "color": "#5fa860", "loot": [{ "item": "wooden_sword", "chance": 0.35 }] },
+    "bat":          { "name": "Bat",           "hp": 22,  "attack": 3, "xpReward": 35,  "tier": 1, "color": "#8866bb", "loot": [{ "item": "leather_cap", "chance": 0.30 }, { "item": "hero_cape", "chance": 0.20 }] },
+    "goblin":       { "name": "Goblin",        "hp": 25,  "attack": 4, "xpReward": 50,  "tier": 1, "color": "#bb7744", "loot": [{ "item": "iron_armor", "chance": 0.25 }, { "item": "crystal_blade", "chance": 0.15 }] },
+    "wolf":         { "name": "Wolf",          "hp": 32,  "attack": 4, "xpReward": 70,  "tier": 2, "color": "#888888", "loot": [{ "item": "steel_sword", "chance": 0.30 }, { "item": "shadow_cape", "chance": 0.20 }] },
+    "bear":         { "name": "Bear",          "hp": 42,  "attack": 5, "xpReward": 100, "tier": 2, "color": "#7a5230", "loot": [{ "item": "guardian_armor", "chance": 0.25 }, { "item": "crystal_crown", "chance": 0.20 }] },
+    "troll":        { "name": "Troll",         "hp": 55,  "attack": 6, "xpReward": 150, "tier": 2, "color": "#6b8e4e", "loot": [{ "item": "crystal_staff", "chance": 0.22 }, { "item": "guardian_armor", "chance": 0.25 }] },
+    "shadow_warden":{ "name": "Shadow Warden", "hp": 80,  "attack": 7, "xpReward": 300, "tier": 2, "boss": true, "color": "#3a2a5a", "loot": [{ "item": "eldoria_blade", "chance": 1 }] },
+    "rock_golem":   { "name": "Rock Golem",    "hp": 65,  "attack": 7, "xpReward": 220, "tier": 3, "color": "#7d7468", "loot": [{ "item": "obsidian_blade", "chance": 0.25 }, { "item": "titan_helm", "chance": 0.25 }] },
+    "magma_slug":   { "name": "Magma Slug",    "hp": 75,  "attack": 8, "xpReward": 280, "tier": 3, "color": "#c0501f", "loot": [{ "item": "mithril_armor", "chance": 0.25 }, { "item": "dragon_cape", "chance": 0.22 }] },
+    "crystal_wyrm": { "name": "Crystal Wyrm",  "hp": 130, "attack": 9, "xpReward": 600, "tier": 3, "boss": true, "color": "#2f6e8f", "loot": [{ "item": "wyrm_scale", "chance": 1 }] }
+  }
+}
