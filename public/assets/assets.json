@@ -1,0 +1,35 @@
+{
+  "main": {
+    "files": [
+      {
+        "type": "image",
+        "key": "shop_building",
+        "url": "assets/shop_building.png"
+      },
+      {
+        "type": "spritesheet",
+        "key": "adventurer-walk",
+        "url": "assets/adventurer-down-walk.png",
+        "frameConfig": {
+          "frameWidth": 32,
+          "frameHeight": 32
+        }
+      },
+      {
+        "type": "audio",
+        "key": "music-town",
+        "url": "assets/music-town.mp3"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "farm",
+        "url": "maps/farm.tmj"
+      },
+      {
+        "type": "image",
+        "key": "tiles",
+        "url": "assets/tileset.png"
+      }
+    ]
+  }
+}

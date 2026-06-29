@@ -38,7 +38,12 @@ export default class UIScene extends Phaser.Scene {
     this.refresh();
 
     // Keep the HUD in sync whenever the player object changes.
-    this.registry.events.on('changedata-player', () => this.refresh());
+    this.onPlayerChange = () => this.refresh();
+    this.registry.events.on('changedata-player', this.onPlayerChange);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.registry.events.off('changedata-player', this.onPlayerChange);
+    });
   }
 
   refresh() {
