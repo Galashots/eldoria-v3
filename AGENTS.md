@@ -2,6 +2,7 @@
 
 ## Architecture Overview
 This is a 2D top-down educational RPG built with Phaser 4 and bundled with Vite. The game relies on a strict separation of concerns to keep the curriculum and gameplay scalable.
+* Curriculum Design: Refer to docs/pedagogy-architecture.md for all decisions regarding stealth assessment, Grade 2 and Grade 5 literacy profiles, and non-punitive feedback structures.
 
 ## Core Rules for Code Modifications
 1. **Scene Separation:** UI and Gameplay run in parallel. `WorldScene` handles movement and map logic. `UIScene` and `CharacterScene` handle overlays. Do not tightly couple them; use the Phaser global `registry` (e.g., `this.registry.events.on`) to broadcast state changes between scenes.
