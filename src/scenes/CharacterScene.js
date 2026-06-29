@@ -147,8 +147,7 @@ export default class CharacterScene extends Phaser.Scene {
     save(this.player);
     this.render();
     this.events.emit('inventory-changed');
-    const ui = this.scene.get('UI');
-    if (ui && ui.refresh) ui.refresh();
+    this.registry.set('player', this.player);
   }
 
   closeScreen() {

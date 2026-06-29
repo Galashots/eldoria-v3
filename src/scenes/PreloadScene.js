@@ -18,16 +18,12 @@ export default class PreloadScene extends Phaser.Scene {
     this.load.on('progress', (p) => { bar.width = 200 * p; });
 
     // ── TODO (real art): once your sprites are in public/assets, load them here, e.g.
-    //   this.load.image('shop_building', 'assets/shop_building.png');
-    //   this.load.spritesheet('adventurer-walk', 'assets/adventurer-down-walk.png',
-    //     { frameWidth: 32, frameHeight: 32 });
-    //   this.load.audio('music-town', 'assets/music-town.mp3');
     // Your original /tools sprite pipeline produces frames already sized for this.
 
     // ── TODO (real maps): load Tiled exports here, e.g.
-    //   this.load.tilemapTiledJSON('farm', 'maps/farm.tmj');
-    //   this.load.image('tiles', 'assets/tileset.png');
     // For now WorldScene builds a demo arena from the generated 'tiles' below.
+
+    this.load.pack('main', 'assets/assets.json');
 
     frame.setDepth(0);
   }

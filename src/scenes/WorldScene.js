@@ -76,6 +76,10 @@ export default class WorldScene extends Phaser.Scene {
       }
     }
 
+    if (body.velocity.x === 0 && body.velocity.y === 0 && this.touchTarget) {
+      this.touchTarget = null;
+    }
+
     this.checkExitTile();
   }
 
