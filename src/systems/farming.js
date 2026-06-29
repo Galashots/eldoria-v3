@@ -1,6 +1,7 @@
 // Farming logic. Pure functions over a `player` object + the crop data table.
 // No Phaser, no canvas — the scene calls these and reflects the result visually.
 import cropsData from '../data/crops.json';
+import { getChallengeTemplate, evaluateAction } from '../curriculum/index.js';
 
 const { crops } = cropsData;
 
@@ -26,6 +27,17 @@ export function harvest(player, crop) {
   player.crops[crop.type] = (player.crops[crop.type] || 0) + 1;
   crop.status = 'harvested';
   return true;
+}
+
+// Get the current challenge for auto-harvesting an area (bonus).
+export function getHarvestBonusChallenge(player) {
+  return getChallengeTemplate(player.profile || 'adventurer', 'math');
+}
+
+// Evaluate a harvest bonus attempt.
+export function evaluateHarvestBonus(player, actionValue, challengeDef, timeTaken = 0, currentErrorCount = 0) {
+  return evaluateAction(actionValue, challengeDef, timeTaken, currentErrorCount);
+  // The scene handles auto-harvesting all crops if evaluation.success is true.
 }
 
 // Sell crops at the shop. Returns gold earned.

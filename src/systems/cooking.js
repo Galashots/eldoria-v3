@@ -1,8 +1,7 @@
-// Cooking logic. Turns crops into food that heals HP. Hidden math = ratio/efficiency
-// (HP healed per crop spent). After cooking, a doubling question offers a free second
-// portion — bonus only, the first portion is never at risk.
+// Cooking logic. Turns crops into food that heals HP.
+// After cooking, a stealth assessment challenge offers a free second portion — bonus only.
 import recipesData from '../data/recipes.json';
-import { doubleBatchQuestion } from '../curriculum/index.js';
+import { getChallengeTemplate, evaluateAction } from '../curriculum/index.js';
 
 const { recipes } = recipesData;
 
@@ -12,19 +11,25 @@ export function canCook(player, recipeId) {
   return Object.entries(r.cost).every(([crop, n]) => (player.crops[crop] || 0) >= n);
 }
 
-// Cook one portion: consumes crops, adds the dish. Returns the doubling question
-// the scene should pose for the bonus portion, or null if cooking failed.
+// Cook one portion: consumes crops, adds the dish. Returns the stealth assessment challenge
+// the scene should evaluate for the bonus portion, or null if cooking failed.
 export function cook(player, recipeId) {
   if (!canCook(player, recipeId)) return null;
   const r = recipes[recipeId];
   for (const [crop, n] of Object.entries(r.cost)) player.crops[crop] -= n;
   player.food[recipeId] = (player.food[recipeId] || 0) + 1;
-  return doubleBatchQuestion(r.heal);
+  return getChallengeTemplate(player.profile || 'adventurer', 'math');
 }
 
-// Grant the free bonus portion when the doubling question is answered correctly.
-export function grantBonusPortion(player, recipeId) {
-  player.food[recipeId] = (player.food[recipeId] || 0) + 1;
+// Evaluate the bonus portion challenge.
+export function evaluateBonusPortion(player, recipeId, actionValue, challengeDef, timeTaken = 0, currentErrorCount = 0) {
+    const evaluation = evaluateAction(actionValue, challengeDef, timeTaken, currentErrorCount);
+
+    if (evaluation.success) {
+        player.food[recipeId] = (player.food[recipeId] || 0) + 1;
+    }
+
+    return evaluation;
 }
 
 // Eat a dish to heal.

@@ -1,8 +1,8 @@
 // Shop logic. Buy seeds, buy Heart Crystals (a gold sink that grants +Max HP), and
-// sell spare gear. Bram's shop also poses a word problem for a discount in the
-// original — surface that via curriculum/questWordProblem from the scene.
+// sell spare gear.
 import cropsData from '../data/crops.json';
 import economy from '../data/economy.json';
+import { getChallengeTemplate, evaluateAction } from '../curriculum/index.js';
 
 const { crops } = cropsData;
 const heart = economy.heartCrystal;
@@ -28,4 +28,15 @@ export function buyHeartCrystal(player) {
   player.maxHp += heart.hpPerCrystal;
   player.hp += heart.hpPerCrystal;
   return true;
+}
+
+// Get the current challenge for a town quest (word problem).
+export function getTownQuestChallenge(player) {
+  return getChallengeTemplate(player.profile || 'adventurer', 'math');
+}
+
+// Evaluate a town quest word problem attempt.
+export function evaluateTownQuest(player, actionValue, challengeDef, timeTaken = 0, currentErrorCount = 0) {
+  return evaluateAction(actionValue, challengeDef, timeTaken, currentErrorCount);
+  // The scene handles quest rewards (e.g., granting gold) if evaluation.success is true.
 }

@@ -1,8 +1,7 @@
-// Combat logic. A turn is driven by a curriculum question: a correct answer lands
-// the hero's attack; a wrong answer just misses. Losing is penalty-free (respawn at
-// full HP) — preserve that, it's why the math never feels like a punishment.
+// Combat logic. A turn is driven by a stealth assessment validation: a correct action lands
+// the hero's attack; a wrong answer triggers scaffolding but does not punish.
 import enemiesData from '../data/enemies.json';
-import { combatQuestion } from '../curriculum/index.js';
+import { getChallengeTemplate, evaluateAction } from '../curriculum/index.js';
 import { equippedDamage } from './inventory.js';
 
 const { enemies } = enemiesData;
@@ -17,17 +16,25 @@ export function gearDamage(player) {
   return equippedDamage(player);
 }
 
-// Ask for this turn's question (the scene shows it; pass the player's profile).
-export function nextQuestion(player) {
-  return combatQuestion(player.profile || 'adventurer');
+// Get the current challenge for this turn's action.
+export function getCombatChallenge(player) {
+  return getChallengeTemplate(player.profile || 'adventurer', 'math');
 }
 
-// Resolve a turn given whether the player's answer was correct.
+// Resolve a turn by evaluating the player's action against the challenge.
 // Returns an outcome the scene can narrate + animate.
-export function resolveTurn(player, enemy, correct) {
-  const out = { hit: false, enemyDefeated: false, playerDown: false, loot: null };
+export function resolveTurn(player, enemy, actionValue, challengeDef, timeTaken = 0, currentErrorCount = 0) {
+  const evaluation = evaluateAction(actionValue, challengeDef, timeTaken, currentErrorCount);
 
-  if (correct) {
+  const out = {
+    hit: false,
+    enemyDefeated: false,
+    playerDown: false,
+    loot: null,
+    evaluation
+  };
+
+  if (evaluation.success) {
     const dmg = 4 + gearDamage(player); // base swing + gear; tune freely
     enemy.hp -= dmg;
     out.hit = true;
@@ -37,14 +44,18 @@ export function resolveTurn(player, enemy, correct) {
       out.loot = rollLoot(enemy.type);
       return out;
     }
+
+    // Enemy strikes back after successful hit unless defeated
+    player.hp -= enemy.attack;
+    if (player.hp <= 0) {
+      out.playerDown = true;
+      player.hp = player.maxHp; // penalty-free respawn
+    }
+  } else {
+    // If not successful, we just return the evaluation for scaffolding,
+    // enemy does NOT attack (non-punitive), preserving player HP/state.
   }
 
-  // Enemy always strikes back after the player's turn.
-  player.hp -= enemy.attack;
-  if (player.hp <= 0) {
-    out.playerDown = true;
-    player.hp = player.maxHp; // penalty-free respawn
-  }
   return out;
 }
 
