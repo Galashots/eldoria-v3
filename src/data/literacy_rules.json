@@ -1,0 +1,16 @@
+{
+  "digraphs": [
+    { "pattern": "th", "color": "#ff0000" },
+    { "pattern": "ch", "color": "#00ff00" },
+    { "pattern": "sh", "color": "#0000ff" },
+    { "pattern": "wh", "color": "#ff00ff" },
+    { "pattern": "ph", "color": "#ffff00" }
+  ],
+  "blends": [
+    { "pattern": "ea", "color": "#00ffff" },
+    { "pattern": "oa", "color": "#ffa500" },
+    { "pattern": "ai", "color": "#800080" },
+    { "pattern": "ee", "color": "#ffc0cb" },
+    { "pattern": "oo", "color": "#a52a2a" }
+  ]
+}

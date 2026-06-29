@@ -1,0 +1,36 @@
+[
+  {
+    "id": "q_math_grade2_01",
+    "grade": 2,
+    "subject": "math",
+    "kusp_tag": "addition_to_20",
+    "tier2_vocabulary": ["total", "combine"],
+    "scaffolding_tiers": [
+      "Try counting on your fingers.",
+      "Start with the bigger number and count up."
+    ],
+    "variables": {
+      "a": { "min": 1, "max": 10 },
+      "b": { "min": 1, "max": 10 }
+    },
+    "operation": "add",
+    "template": "You pick {a} red apples and {b} green apples. How many apples?"
+  },
+  {
+    "id": "q_math_grade2_02",
+    "grade": 2,
+    "subject": "math",
+    "kusp_tag": "subtraction_to_20",
+    "tier2_vocabulary": ["remaining", "left"],
+    "scaffolding_tiers": [
+      "If you take away {b}, what's left?",
+      "Count backwards from {a}."
+    ],
+    "variables": {
+      "a": { "min": 5, "max": 20 },
+      "b": { "min": 1, "max": 5 }
+    },
+    "operation": "subtract",
+    "template": "You have {a} coins. You spend {b}. How many left?"
+  }
+]
